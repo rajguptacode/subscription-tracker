@@ -1,6 +1,0 @@
-node_modules/
-.opencode/
-graphify-out/
-package-lock.json
-clear-data.html
-*.log
