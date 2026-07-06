@@ -1,0 +1,1026 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Subscription Tracker</title>
+<style>
+  *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+  :root{
+    --bg-page:#0F0F0F;--bg-surface:#181818;--bg-surface-raised:#212121;
+    --border:#2D2D2D;--text-primary:#F1F1F1;--text-secondary:#AAAAAA;--text-tertiary:#717171;
+    --accent-brand:#FF0000;--accent-brand-hover:#CC0000;
+    --success:#3DDC84;--danger:#F44336;--warning:#FFC107;
+    --gradient-revenue:linear-gradient(135deg,#0B3D2E 0%,#0F6E56 45%,#1D9E75 100%);
+    --gradient-pending:linear-gradient(135deg,#3D2E0B 0%,#6E560F 45%,#9E751D 100%);
+    --radius:12px;--card-padding:20px;--gap:16px;
+  }
+  html{font-size:14px}
+  body{font-family:-apple-system,"Segoe UI",Roboto,sans-serif;background:var(--bg-page);color:var(--text-primary);min-height:100vh;line-height:1.5}
+  .container{max-width:1400px;margin:0 auto;padding:16px}
+
+  .header{display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;flex-wrap:wrap;gap:12px}
+  .header h1{font-size:20px;font-weight:600}
+  .header-actions{display:flex;gap:8px;flex-wrap:wrap}
+  .btn{padding:8px 16px;border:none;border-radius:8px;cursor:pointer;font-size:13px;font-weight:500;transition:all .15s}
+  .btn-primary{background:var(--accent-brand);color:#fff}
+  .btn-primary:hover{background:var(--accent-brand-hover)}
+  .btn-secondary{background:var(--bg-surface-raised);color:var(--text-secondary);border:1px solid var(--border)}
+  .btn-secondary:hover{background:var(--border)}
+  .btn-success{background:var(--success);color:#000}
+  .btn-success:hover{opacity:.85}
+  .btn-blue{background:#2196F3;color:#fff}
+  .btn-blue:hover{opacity:.85}
+  .btn-sm{padding:4px 10px;font-size:12px}
+
+  .search-bar{display:flex;gap:8px;margin-bottom:var(--gap);flex-wrap:wrap}
+  .search-input{flex:1;min-width:200px;padding:10px 14px;border:1px solid var(--border);border-radius:8px;background:var(--bg-surface-raised);color:var(--text-primary);font-size:14px;outline:none}
+  .search-input:focus{border-color:var(--accent-brand)}
+  .filter-select{padding:10px 12px;border:1px solid var(--border);border-radius:8px;background:var(--bg-surface-raised);color:var(--text-primary);font-size:13px;outline:none;min-width:140px}
+
+  .metrics{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:var(--gap);margin-bottom:var(--gap)}
+  .card{background:var(--bg-surface);border:1px solid var(--border);border-radius:var(--radius);padding:var(--card-padding)}
+  .metric-label{font-size:13px;font-weight:500;color:var(--text-secondary);letter-spacing:.02em;margin-bottom:4px}
+  .metric-value{font-size:22px;font-weight:600}
+  .metric-sub{font-size:12px;margin-top:6px}
+  .trend-flat{color:var(--text-tertiary)}
+  .card-revenue{background:var(--gradient-revenue);border:none}
+  .card-revenue .metric-label{color:rgba(255,255,255,.7)}
+  .card-revenue .metric-value{font-size:26px;color:#fff}
+  .card-pending{background:var(--gradient-pending);border:none}
+  .card-pending .metric-label{color:rgba(255,255,255,.7)}
+  .card-pending .metric-value{font-size:26px;color:#fff}
+
+  .net-profit-card{padding:20px 24px;margin-bottom:var(--gap)}
+  .net-profit-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;margin-top:12px}
+  .np-box{padding:16px;border-radius:10px;background:var(--bg-surface-raised)}
+  .np-label{font-size:12px;color:var(--text-tertiary);text-transform:uppercase;letter-spacing:.3px}
+  .np-value{font-size:26px;font-weight:700;margin-top:6px}
+  .np-received{color:var(--success)}
+  .np-fees{color:var(--danger)}
+  .np-net-box{background:linear-gradient(135deg,#0a2a1a,#0d3320);border:1px solid rgba(61,220,132,.3)}
+  .np-net{color:#3DDC84}
+
+  .badge{display:inline-block;padding:3px 10px;border-radius:20px;font-size:12px;font-weight:500}
+  .badge-active{background:rgba(61,220,132,.15);color:var(--success)}
+  .badge-expiring{background:rgba(255,193,7,.15);color:var(--warning)}
+  .badge-expired{background:rgba(244,67,54,.15);color:var(--danger)}
+
+  .charts-row{display:grid;grid-template-columns:1fr 1fr;gap:var(--gap);margin-bottom:var(--gap)}
+  @media(max-width:860px){.charts-row{grid-template-columns:1fr}}
+  .chart-title{font-size:13px;font-weight:500;color:var(--text-secondary);margin-bottom:16px;text-transform:uppercase;letter-spacing:.04em}
+
+  .bar-chart{display:flex;align-items:flex-end;gap:8px;height:160px;padding-top:10px}
+  .bar-col{flex:1;display:flex;flex-direction:column;align-items:center;gap:6px}
+  .bar{width:100%;border-radius:4px 4px 0 0;transition:height .3s;min-height:4px}
+  .bar-current{background:linear-gradient(180deg,#3DDC84 0%,#0F6E56 100%)}
+  .bar-past{background:linear-gradient(180deg,#3DDC84 0%,#0F6E56 100%);opacity:.5}
+  .bar-label{font-size:11px;color:var(--text-tertiary)}
+  .bar-value{font-size:11px;color:var(--text-secondary)}
+
+  .donut-wrap{display:flex;align-items:center;gap:20px}
+  .donut-svg{width:120px;height:120px;flex-shrink:0}
+  .donut-legend{display:flex;flex-direction:column;gap:8px}
+  .legend-item{display:flex;align-items:center;gap:8px;font-size:13px}
+  .legend-dot{width:10px;height:10px;border-radius:50%;flex-shrink:0}
+
+  .product-bars{display:flex;flex-direction:column;gap:10px}
+  .product-row{display:flex;align-items:center;gap:12px}
+  .product-name{width:130px;font-size:12px;color:var(--text-secondary);text-align:right;flex-shrink:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .product-bar-wrap{flex:1;height:24px;background:var(--bg-surface-raised);border-radius:4px;overflow:hidden}
+  .product-bar-fill{height:100%;border-radius:4px;display:flex;align-items:center;padding-left:8px;font-size:11px;font-weight:600;color:#fff;min-width:fit-content;transition:width .3s}
+  .product-bar-count{font-size:12px;color:var(--text-tertiary);width:50px;text-align:right;flex-shrink:0}
+
+  .main-grid{display:grid;grid-template-columns:1fr 280px;gap:var(--gap);margin-bottom:var(--gap)}
+  @media(max-width:860px){.main-grid{grid-template-columns:1fr}}
+
+  .table-wrap{overflow-x:auto}
+  table{width:100%;border-collapse:collapse}
+  th{text-align:left;padding:10px 10px;font-size:12px;font-weight:500;color:var(--text-secondary);border-bottom:1px solid var(--border);background:var(--bg-surface-raised);white-space:nowrap}
+  td{padding:10px 10px;border-bottom:1px solid var(--border);font-size:13px}
+  tr:hover td{background:var(--bg-surface-raised)}
+  .initial-circle{width:30px;height:30px;border-radius:50%;background:var(--bg-surface-raised);color:var(--text-primary);display:inline-flex;align-items:center;justify-content:center;font-size:12px;font-weight:600;margin-right:6px;vertical-align:middle}
+  .btn-remove{background:none;border:none;color:var(--danger);cursor:pointer;font-size:12px;padding:4px 6px;border-radius:4px}
+  .btn-remove:hover{background:rgba(244,67,54,.15)}
+  .btn-edit{background:none;border:none;color:var(--text-secondary);cursor:pointer;font-size:12px;padding:4px 6px;border-radius:4px}
+  .btn-edit:hover{background:rgba(255,255,255,.1)}
+  .btn-pay{background:none;border:none;cursor:pointer;font-size:11px;padding:3px 8px;border-radius:4px;font-weight:500}
+  .btn-pay-received{background:rgba(61,220,132,.15);color:var(--success)}
+  .btn-pay-pending{background:rgba(255,193,7,.15);color:var(--warning)}
+  .btn-pay:hover{opacity:.8}
+  .product-tag{display:inline-block;padding:2px 8px;border-radius:4px;font-size:11px;background:rgba(61,220,132,.1);color:var(--success)}
+
+  .feed{max-height:400px;overflow-y:auto}
+  .feed-title{font-size:13px;font-weight:500;color:var(--text-secondary);margin-bottom:12px;text-transform:uppercase;letter-spacing:.04em}
+  .feed-item{display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--border);font-size:13px}
+  .feed-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+
+  .modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:100;align-items:center;justify-content:center}
+  .modal-overlay.open{display:flex}
+  .modal{background:var(--bg-surface);border:1px solid var(--border);border-radius:var(--radius);padding:28px;width:90%;max-width:420px;max-height:90vh;overflow-y:auto}
+  .modal h2{font-size:18px;font-weight:600;margin-bottom:20px}
+  .form-group{margin-bottom:14px}
+  .form-group label{display:block;font-size:13px;font-weight:500;color:var(--text-secondary);margin-bottom:6px}
+  .form-group input,.form-group select{width:100%;padding:10px 12px;border:1px solid var(--border);border-radius:8px;background:var(--bg-surface-raised);color:var(--text-primary);font-size:14px;outline:none}
+  .form-group input:focus,.form-group select:focus{border-color:var(--accent-brand)}
+  .modal-actions{display:flex;gap:10px;justify-content:flex-end;margin-top:20px}
+  .btn-cancel{background:var(--bg-surface-raised);color:var(--text-secondary);border:1px solid var(--border)}
+  .empty{text-align:center;padding:40px;color:var(--text-tertiary)}
+  .section-title{font-size:15px;font-weight:600;margin-bottom:12px;padding-bottom:8px;border-bottom:1px solid var(--border)}
+  .no-results{text-align:center;padding:20px;color:var(--text-tertiary);font-size:13px}
+  .btn-renew{background:var(--accent-brand);color:#fff;border:none;cursor:pointer;font-size:12px;padding:5px 12px;border-radius:4px;font-weight:500}
+  .btn-renew:hover{background:var(--accent-brand-hover)}
+  .btn-copy{background:none;border:none;color:var(--text-secondary);cursor:pointer;font-size:11px;padding:4px 8px;border-radius:4px}
+  .btn-copy:hover{background:rgba(255,255,255,.1)}
+  .expired-row-expired{color:var(--danger);font-weight:600}
+
+  /* Print styles */
+  @media print{
+    body{background:#fff;color:#000;font-size:11px;font-family:"Segoe UI",Roboto,Arial,sans-serif}
+    .no-print{display:none!important}
+    .print-only{display:block!important}
+    .card{border:1px solid #ddd;background:#fff;box-shadow:none}
+    .card-revenue,.card-pending{background:#f8f8f8!important}
+    .card-revenue .metric-value,.card-pending .metric-value{color:#000!important}
+    .badge{border:1px solid #ccc;color:#000!important;background:#f0f0f0!important}
+    .product-tag{border:1px solid #ccc;background:#f0f0f0;color:#000!important}
+    .bar-current,.bar-past{background:#666!important;opacity:1!important}
+    .btn-remove,.btn-edit,.btn-pay,.feed,.modal-overlay,.search-bar,.header-actions,.payment-modal-overlay,#lock-screen{display:none!important}
+    #payment-modal-overlay{display:none!important}
+    #net-profit-section{margin-bottom:12px}
+    .net-profit-card{border:1px solid #ddd;background:#fff!important;padding:12px}
+    .np-box{background:#f8f8f8!important}
+    .np-net-box{background:#f0f8f0!important;border:1px solid #2e7d32!important}
+    .np-value{color:#000!important}
+    .np-received{color:#2e7d32!important}
+    .np-fees{color:#c62828!important}
+    .np-net{color:#2e7d32!important}
+    table{page-break-inside:avoid}
+    th{background:#f0f0f0!important;color:#000!important;border-bottom:2px solid #000}
+    td{border-bottom:1px solid #ddd;color:#000}
+    .initial-circle{background:#eee;color:#000}
+  }
+  .print-only{display:none}
+
+  /* Report print styles */
+  .report-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:200;overflow-y:auto}
+  .report-overlay.open{display:block}
+  .report-page{background:#fff;color:#000;max-width:900px;margin:20px auto;padding:40px;border-radius:8px}
+  .report-page .no-print{display:block}
+  @media print{
+    .report-overlay{position:static;background:none}
+    .report-page{margin:0;padding:20px;max-width:100%;box-shadow:none;border-radius:0}
+    .report-close{display:none!important}
+  }
+
+  .rpt-header{border-bottom:3px solid #000;padding-bottom:16px;margin-bottom:24px;text-align:center}
+  .rpt-header h1{font-size:22px;font-weight:700;margin-bottom:4px;letter-spacing:.5px}
+  .rpt-header p{font-size:12px;color:#666}
+  .rpt-header .rpt-period{font-size:13px;color:#333;margin-top:4px;font-weight:500}
+
+  .rpt-section{margin-bottom:28px}
+  .rpt-section h2{font-size:15px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;border-bottom:2px solid #000;padding-bottom:6px;margin-bottom:14px}
+
+  .rpt-summary-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:24px}
+  .rpt-summary-box{border:1px solid #ddd;padding:12px;text-align:center}
+  .rpt-summary-box .rpt-box-label{font-size:11px;color:#666;text-transform:uppercase;letter-spacing:.3px}
+  .rpt-summary-box .rpt-box-value{font-size:20px;font-weight:700;margin-top:4px}
+
+  .rpt-table{width:100%;border-collapse:collapse;font-size:12px}
+  .rpt-table th{background:#f5f5f5;text-align:left;padding:8px 10px;border:1px solid #ddd;font-weight:600;font-size:11px;text-transform:uppercase;letter-spacing:.3px}
+  .rpt-table td{padding:8px 10px;border:1px solid #ddd}
+  .rpt-table tr:nth-child(even){background:#fafafa}
+  .rpt-table .rpt-total{background:#f0f0f0;font-weight:700}
+  .rpt-table .text-right{text-align:right}
+  .rpt-table .text-center{text-align:center}
+  .rpt-table .status-received{color:#2e7d32;font-weight:600}
+  .rpt-table .status-pending{color:#e65100;font-weight:600}
+  .rpt-table .status-active{color:#2e7d32}
+  .rpt-table .status-expiring{color:#e65100}
+  .rpt-table .status-expired{color:#c62828}
+
+  .rpt-footer{border-top:2px solid #000;padding-top:12px;margin-top:24px;display:flex;justify-content:space-between;font-size:11px;color:#666}
+  .rpt-signature{margin-top:40px;display:grid;grid-template-columns:1fr 1fr;gap:40px}
+  .rpt-sign-line{border-top:1px solid #000;padding-top:6px;font-size:12px}
+
+  /* Password lock screen */
+  #lock-screen{position:fixed;inset:0;z-index:10000;display:flex;align-items:center;justify-content:center;background:#050505;overflow:hidden}
+  #lock-screen.hidden{opacity:0;visibility:hidden;pointer-events:none;transition:opacity .6s ease,visibility .6s ease}
+  .lock-bg{position:absolute;inset:0;background:
+    radial-gradient(ellipse at 20% 50%,rgba(61,220,132,.08) 0%,transparent 50%),
+    radial-gradient(ellipse at 80% 20%,rgba(61,220,132,.05) 0%,transparent 40%),
+    radial-gradient(ellipse at 50% 80%,rgba(61,220,132,.06) 0%,transparent 45%);
+    animation:bgPulse 4s ease-in-out infinite alternate}
+  @keyframes bgPulse{from{opacity:.6}to{opacity:1}}
+  .lock-grid{position:absolute;inset:0;background-image:
+    linear-gradient(rgba(61,220,132,.03) 1px,transparent 1px),
+    linear-gradient(90deg,rgba(61,220,132,.03) 1px,transparent 1px);
+    background-size:40px 40px;animation:gridMove 20s linear infinite}
+  @keyframes gridMove{from{transform:translate(0,0)}to{transform:translate(40px,40px)}}
+  .lock-particles{position:absolute;inset:0;overflow:hidden}
+  .lock-p{position:absolute;width:2px;height:2px;background:rgba(61,220,132,.4);border-radius:50%;animation:floatUp linear infinite}
+  @keyframes floatUp{0%{opacity:0;transform:translateY(100vh) scale(0)}10%{opacity:1}90%{opacity:1}100%{opacity:0;transform:translateY(-10vh) scale(1.5)}}
+  .lock-content{position:relative;z-index:2;text-align:center}
+  .lock-icon{width:60px;height:60px;margin:0 auto 28px;position:relative}
+  .lock-icon svg{width:100%;height:100%}
+  .lock-ring{position:absolute;inset:-8px;border:1px solid rgba(61,220,132,.15);border-radius:50%;animation:ringPulse 2s ease-in-out infinite}
+  @keyframes ringPulse{0%,100%{transform:scale(1);opacity:.3}50%{transform:scale(1.15);opacity:.6}}
+  .lock-title{font-size:14px;text-transform:uppercase;letter-spacing:4px;color:var(--text-tertiary);margin-bottom:24px;opacity:0;animation:fadeUp .6s ease .2s forwards}
+  .lock-input-wrap{position:relative;width:200px;margin:0 auto}
+  .lock-input{width:100%;padding:16px 20px;font-size:28px;font-weight:700;text-align:center;letter-spacing:12px;border:1px solid rgba(61,220,132,.2);border-radius:12px;background:rgba(255,255,255,.03);color:#fff;outline:none;transition:all .3s;backdrop-filter:blur(10px)}
+  .lock-input:focus{border-color:rgba(61,220,132,.5);box-shadow:0 0 30px rgba(61,220,132,.1)}
+  .lock-input::placeholder{color:rgba(255,255,255,.15);letter-spacing:4px;font-size:14px}
+  .lock-input.error{border-color:var(--danger);box-shadow:0 0 20px rgba(244,67,54,.2);animation:shake .4s ease}
+  .lock-input.success{border-color:var(--success);box-shadow:0 0 30px rgba(61,220,132,.3)}
+  @keyframes shake{0%,100%{transform:translateX(0)}20%,60%{transform:translateX(-6px)}40%,80%{transform:translateX(6px)}}
+  .lock-hint{margin-top:16px;font-size:12px;color:var(--text-tertiary);opacity:0;animation:fadeUp .5s ease .5s forwards}
+  .lock-glow{position:absolute;width:300px;height:300px;border-radius:50%;background:radial-gradient(circle,rgba(61,220,132,.1) 0%,transparent 70%);pointer-events:none;animation:glowDrift 6s ease-in-out infinite alternate}
+  @keyframes glowDrift{from{transform:translate(-50%,-50%) translate(-20px,-10px)}to{transform:translate(-50%,-50%) translate(20px,10px)}}
+  .lock-scanline{position:absolute;inset:0;background:repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(61,220,132,.015) 2px,rgba(61,220,132,.015) 4px);pointer-events:none;animation:scanMove 8s linear infinite}
+  @keyframes scanMove{from{transform:translateY(0)}to{transform:translateY(40px)}}
+
+  /* Welcome animation */
+  #welcome-overlay{position:fixed;inset:0;background:var(--bg-page);z-index:9999;display:flex;align-items:center;justify-content:center;flex-direction:column;transition:opacity .8s ease,visibility .8s ease}
+  #welcome-overlay.hidden{opacity:0;visibility:hidden;pointer-events:none}
+  .welcome-content{text-align:center}
+  .welcome-logo{width:80px;height:80px;margin:0 auto 24px;opacity:0;transform:scale(.5);animation:logoIn .8s cubic-bezier(.34,1.56,.64,1) .3s forwards}
+  .welcome-logo svg{width:100%;height:100%}
+  @keyframes logoIn{to{opacity:1;transform:scale(1) rotate(0)}}
+  .welcome-title{font-size:32px;font-weight:700;opacity:0;transform:translateY(20px);animation:fadeUp .7s ease .7s forwards}
+  .welcome-sub{font-size:15px;color:var(--text-secondary);margin-top:8px;opacity:0;transform:translateY(15px);animation:fadeUp .6s ease 1s forwards}
+  .welcome-line{width:60px;height:3px;background:var(--success);margin:20px auto 0;border-radius:2px;opacity:0;transform:scaleX(0);animation:lineGrow .5s ease 1.3s forwards}
+  @keyframes fadeUp{to{opacity:1;transform:translateY(0)}}
+  @keyframes lineGrow{to{opacity:1;transform:scaleX(1)}}
+  .welcome-loader{margin-top:28px;display:flex;gap:6px;justify-content:center;opacity:0;animation:fadeUp .4s ease 1.5s forwards}
+  .welcome-dot{width:8px;height:8px;border-radius:50%;background:var(--success);animation:pulse .6s ease-in-out infinite alternate}
+  .welcome-dot:nth-child(2){animation-delay:.15s}
+  .welcome-dot:nth-child(3){animation-delay:.3s}
+  @keyframes pulse{from{opacity:.3;transform:scale(.8)}to{opacity:1;transform:scale(1.1)}}
+  .welcome-particles{position:absolute;inset:0;overflow:hidden;pointer-events:none}
+  .w-particle{position:absolute;width:4px;height:4px;background:var(--success);border-radius:50%;opacity:0;animation:particleFloat 3s ease-in-out infinite}
+  @keyframes particleFloat{0%{opacity:0;transform:translateY(100vh) scale(0)}20%{opacity:.6}80%{opacity:.6}100%{opacity:0;transform:translateY(-20vh) scale(1)}}
+</style>
+</head>
+<body>
+<div id="lock-screen">
+  <div class="lock-bg"></div>
+  <div class="lock-grid"></div>
+  <div class="lock-scanline"></div>
+  <div class="lock-glow" style="top:30%;left:20%"></div>
+  <div class="lock-glow" style="top:70%;left:80%;animation-delay:-3s"></div>
+  <div class="lock-particles" id="lock-particles"></div>
+  <div class="lock-content">
+    <div class="lock-icon">
+      <div class="lock-ring"></div>
+      <svg viewBox="0 0 60 60" fill="none">
+        <rect x="12" y="28" width="36" height="26" rx="4" stroke="#3DDC84" stroke-width="1.5" fill="none" opacity="0">
+          <animate attributeName="opacity" from="0" to="1" dur="0.5s" fill="freeze"/>
+        </rect>
+        <path d="M20 28V20C20 14.5 24.5 10 30 10C35.5 10 40 14.5 40 20V28" stroke="#3DDC84" stroke-width="1.5" fill="none" stroke-linecap="round" opacity="0">
+          <animate attributeName="opacity" from="0" to="1" dur="0.5s" begin="0.2s" fill="freeze"/>
+        </path>
+        <circle cx="30" cy="38" r="3" fill="#3DDC84" opacity="0">
+          <animate attributeName="opacity" from="0" to="1" dur="0.3s" begin="0.5s" fill="freeze"/>
+        </circle>
+        <line x1="30" y1="41" x2="30" y2="46" stroke="#3DDC84" stroke-width="1.5" stroke-linecap="round" opacity="0">
+          <animate attributeName="opacity" from="0" to="1" dur="0.3s" begin="0.5s" fill="freeze"/>
+        </line>
+      </svg>
+    </div>
+    <div class="lock-title">Enter Access Code</div>
+    <div class="lock-input-wrap">
+      <input type="password" class="lock-input" id="lock-input" maxlength="4" placeholder="_ _ _ _" autocomplete="off">
+    </div>
+    <div class="lock-hint">4-digit code required</div>
+  </div>
+</div>
+
+<div id="welcome-overlay">
+  <div class="welcome-particles" id="welcome-particles"></div>
+  <div class="welcome-content">
+    <div class="welcome-logo">
+      <svg viewBox="0 0 80 80" fill="none">
+        <rect x="4" y="4" width="72" height="72" rx="16" stroke="#3DDC84" stroke-width="2" fill="none" opacity="0">
+          <animate attributeName="opacity" from="0" to="1" dur="0.6s" begin="0.3s" fill="freeze"/>
+          <animate attributeName="stroke-dasharray" from="0 300" to="300 0" dur="0.8s" begin="0.3s" fill="freeze"/>
+        </rect>
+        <rect class="bar-anim" x="16" y="50" width="10" height="16" rx="2" fill="#3DDC84">
+          <animate attributeName="height" from="0" to="16" dur="0.4s" begin="0.8s" fill="freeze"/>
+          <animate attributeName="y" from="66" to="50" dur="0.4s" begin="0.8s" fill="freeze"/>
+        </rect>
+        <rect class="bar-anim" x="30" y="34" width="10" height="32" rx="2" fill="#3DDC84" opacity="0.85">
+          <animate attributeName="height" from="0" to="32" dur="0.4s" begin="1s" fill="freeze"/>
+          <animate attributeName="y" from="66" to="34" dur="0.4s" begin="1s" fill="freeze"/>
+        </rect>
+        <rect class="bar-anim" x="44" y="22" width="10" height="44" rx="2" fill="#3DDC84" opacity="0.9">
+          <animate attributeName="height" from="0" to="44" dur="0.4s" begin="1.2s" fill="freeze"/>
+          <animate attributeName="y" from="66" to="22" dur="0.4s" begin="1.2s" fill="freeze"/>
+        </rect>
+        <rect class="bar-anim" x="58" y="14" width="10" height="52" rx="2" fill="#3DDC84">
+          <animate attributeName="height" from="0" to="52" dur="0.4s" begin="1.4s" fill="freeze"/>
+          <animate attributeName="y" from="66" to="14" dur="0.4s" begin="1.4s" fill="freeze"/>
+        </rect>
+        <line x1="12" y1="68" x2="72" y2="68" stroke="#3DDC84" stroke-width="1" opacity="0.3"/>
+      </svg>
+    </div>
+    <div class="welcome-title">Subscription Tracker</div>
+    <div class="welcome-sub">Raj Trading Analytics</div>
+    <div class="welcome-line"></div>
+    <div class="welcome-loader">
+      <div class="welcome-dot"></div>
+      <div class="welcome-dot"></div>
+      <div class="welcome-dot"></div>
+    </div>
+  </div>
+</div>
+<div class="container no-print" style="opacity:0;transition:opacity .6s ease" id="main-container">
+  <div class="header">
+    <h1>Subscription Tracker</h1>
+    <div class="header-actions">
+      <button class="btn btn-blue" onclick="openReport('summary')">Summary Report</button>
+      <button class="btn btn-success" onclick="openReport('transaction')">Transaction Report</button>
+      <button class="btn btn-secondary" onclick="Storage.exportData()">Export</button>
+      <button class="btn btn-secondary" onclick="document.getElementById('import-file').click()">Import</button>
+      <input type="file" id="import-file" accept=".json" style="display:none" onchange="handleImport(event)">
+      <button class="btn btn-primary" onclick="openModal()">+ Add Subscriber</button>
+    </div>
+  </div>
+
+  <div class="search-bar">
+    <input type="text" class="search-input" id="search-input" placeholder="Search by name, contact, or TV username..." oninput="handleSearch()">
+    <select class="filter-select" id="filter-product" onchange="handleSearch()">
+      <option value="">All Products</option>
+    </select>
+    <select class="filter-select" id="filter-status" onchange="handleSearch()">
+      <option value="">All Status</option>
+      <option value="active">Active</option>
+      <option value="expiring_soon">Expiring Soon</option>
+      <option value="expired">Expired</option>
+    </select>
+  </div>
+
+  <div class="metrics" id="metrics"></div>
+
+  <div id="net-profit-section"></div>
+
+  <div class="charts-row">
+    <div class="card">
+      <div class="chart-title">Revenue Trend (Last 6 Months)</div>
+      <div class="bar-chart" id="revenue-chart"></div>
+    </div>
+    <div class="card">
+      <div class="chart-title">New Subscribers (Last 6 Months)</div>
+      <div class="bar-chart" id="growth-chart"></div>
+    </div>
+  </div>
+
+  <div class="charts-row">
+    <div class="card">
+      <div class="chart-title">Plan Distribution</div>
+      <div class="donut-wrap" id="plan-chart"></div>
+    </div>
+    <div class="card">
+      <div class="chart-title">Product Sales</div>
+      <div class="product-bars" id="product-chart"></div>
+    </div>
+  </div>
+
+  <div class="main-grid">
+    <div class="card table-wrap">
+      <div class="section-title">All Subscribers <span id="subscriber-count" style="font-weight:400;color:var(--text-tertiary);font-size:13px"></span></div>
+      <table>
+        <thead>
+          <tr>
+            <th>Name</th><th>Contact</th><th>TV Username</th><th>Product</th>
+            <th>Plan</th><th>Amount</th><th>Payment Date</th><th>Expiry</th>
+            <th>Days Left</th><th>Status</th><th>Payment</th><th></th>
+          </tr>
+        </thead>
+        <tbody id="subscriber-table"></tbody>
+      </table>
+      <div class="empty" id="empty-state" style="display:none">No subscribers yet. Click "+ Add Subscriber" to get started.</div>
+      <div class="no-results" id="no-results" style="display:none">No subscribers match your search.</div>
+    </div>
+    <div class="card feed">
+      <div class="feed-title">Alerts</div>
+      <div id="feed-list"></div>
+    </div>
+  </div>
+
+  <!-- Expired Customers Section -->
+  <div class="card" style="margin-bottom:var(--gap)">
+    <div class="section-title" style="display:flex;align-items:center;justify-content:space-between">
+      <span>Expired Customers — Reach Out for Renewal</span>
+      <span id="expired-count" style="font-weight:400;color:var(--danger);font-size:13px"></span>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>#</th><th>Name</th><th>Contact</th><th>TV Username</th><th>Product</th>
+            <th>Plan</th><th>Last Paid</th><th>Expired On</th><th>Days Expired</th><th></th>
+          </tr>
+        </thead>
+        <tbody id="expired-table"></tbody>
+      </table>
+      <div class="empty" id="expired-empty" style="display:none;padding:20px">No expired customers. Great!</div>
+    </div>
+  </div>
+</div>
+<div class="modal-overlay" id="modal-overlay" onclick="closeModalBg(event)">
+  <div class="modal">
+    <h2 id="modal-title">Add Subscriber</h2>
+    <form id="add-form" onsubmit="handleSubmit(event)">
+      <input type="hidden" id="f-edit-id" value="">
+      <div class="form-group"><label for="f-name">Name</label><input id="f-name" type="text" required placeholder="e.g. Rahul"></div>
+      <div class="form-group"><label for="f-contact">Contact (Telegram / Phone)</label><input id="f-contact" type="text" required placeholder="e.g. @rahul or 98765xxxxx"></div>
+      <div class="form-group"><label for="f-tv">TradingView Username</label><input id="f-tv" type="text" placeholder="e.g. raj_trader"></div>
+      <div class="form-group"><label for="f-product">Product</label><select id="f-product" required><option value="">Select Product</option></select></div>
+      <div class="form-group"><label for="f-plan">Plan</label><select id="f-plan" required><option value="1">1 Month - ₹199</option><option value="3">3 Months - ₹499</option><option value="6">6 Months - ₹899</option></select></div>
+      <div class="form-group"><label for="f-date">Payment Date</label><input id="f-date" type="date" required></div>
+      <div class="modal-actions">
+        <button type="button" class="btn btn-cancel" onclick="closeModal()">Cancel</button>
+        <button type="submit" class="btn btn-primary" id="modal-submit-btn">Add</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<div class="modal-overlay" id="payment-modal-overlay" onclick="closePaymentModalBg(event)">
+  <div class="modal" style="max-width:420px">
+    <h2>Payment Received</h2>
+    <div style="margin-bottom:16px;padding:12px;background:var(--bg-surface-raised);border-radius:8px">
+      <div style="font-size:13px;color:var(--text-tertiary)">Subscriber</div>
+      <div style="font-size:16px;font-weight:600" id="pm-name"></div>
+      <div style="font-size:13px;color:var(--text-tertiary);margin-top:8px">Subscription Amount</div>
+      <div style="font-size:20px;font-weight:700;color:var(--success)" id="pm-amount"></div>
+    </div>
+    <form id="payment-form" onsubmit="handlePaymentSubmit(event)">
+      <input type="hidden" id="pm-id">
+      <div class="form-group">
+        <label for="pm-received">Actual Received (₹)</label>
+        <input id="pm-received" type="number" step="0.01" min="0" required oninput="calcPaymentNet()">
+      </div>
+      <div class="form-group">
+        <label for="pm-fees">Gateway Fees (₹)</label>
+        <input id="pm-fees" type="number" step="0.01" min="0" value="0" oninput="calcPaymentNet()">
+      </div>
+      <div style="padding:12px;background:var(--bg-surface-raised);border-radius:8px;margin-bottom:16px;display:flex;justify-content:space-between;align-items:center">
+        <span style="font-size:14px;color:var(--text-secondary)">Net in Bank</span>
+        <span style="font-size:22px;font-weight:700;color:var(--success)" id="pm-net"></span>
+      </div>
+      <div class="modal-actions">
+        <button type="button" class="btn btn-cancel" onclick="closePaymentModal()">Cancel</button>
+        <button type="submit" class="btn btn-success">Confirm Received</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Report Overlay -->
+<div class="report-overlay" id="report-overlay">
+  <div class="report-page" id="report-page"></div>
+</div>
+
+<script>
+const STORAGE_KEY='subscribers';
+const Storage={load(){try{return JSON.parse(localStorage.getItem(STORAGE_KEY))||[]}catch{return[]}},save(list){localStorage.setItem(STORAGE_KEY,JSON.stringify(list))},add(sub){const l=this.load();l.push(sub);this.save(l);return l},remove(id){const l=this.load().filter(s=>s.id!==id);this.save(l);return l},update(id,u){const l=this.load().map(s=>s.id===id?{...s,...u}:s);this.save(l);return l},togglePaymentStatus(id){const l=this.load().map(s=>s.id===id?{...s,payment_status:s.payment_status==='received'?'pending':'received'}:s);this.save(l);return l},exportData(){const l=this.load();const b=new Blob([JSON.stringify(l,null,2)],{type:'application/json'});const u=URL.createObjectURL(b);const a=document.createElement('a');a.href=u;a.download='subscribers-backup-'+new Date().toISOString().split('T')[0]+'.json';a.click();URL.revokeObjectURL(u)},importData(s){try{const d=JSON.parse(s);if(!Array.isArray(d))throw new Error('Invalid format');this.save(d);return{success:true,count:d.length}}catch(e){return{success:false,error:e.message}}},clear(){localStorage.removeItem(STORAGE_KEY)}};
+</script>
+<script>
+const PLANS={1:{months:1,price:199,label:'1 Month'},3:{months:3,price:499,label:'3 Months'},6:{months:6,price:899,label:'6 Months'}};
+const PRODUCTS=['Options Analytics Bot','TradingView Indicator','PCR Analysis Tool','OI Buildup Tracker','Max Pain Calculator','IV Skew Analyzer','Combo Pack'];
+function uid(){return Date.now().toString(36)+Math.random().toString(36).slice(2,8)}
+function createSubscriber(n,c,pm,pd,prod,tvu){const e=new Date(pd);e.setMonth(e.getMonth()+pm);return{id:uid(),name:n,contact:c,tradingview_username:tvu||'',plan_months:pm,amount:PLANS[pm].price,payment_date:pd,expiry_date:e.toISOString().split('T')[0],product:prod||'Unassigned',payment_status:'pending',source:'manual',received_amount:0,gateway_fees:0}}
+function deriveStatus(ed){const n=new Date();n.setHours(0,0,0,0);const e=new Date(ed);e.setHours(0,0,0,0);if(e<n)return'expired';const d=(e-n)/(1e3*60*60*24);if(d<=3)return'expiring_soon';return'active'}
+function calcRevenue(l){const n=new Date();return l.filter(s=>{const p=new Date(s.payment_date);return p.getMonth()===n.getMonth()&&p.getFullYear()===n.getFullYear()}).reduce((a,s)=>a+s.amount,0)}
+function calcReceivedRevenue(l){return l.filter(s=>s.payment_status==='received').reduce((a,s)=>a+s.amount,0)}
+function calcPendingRevenue(l){return l.filter(s=>s.payment_status==='pending').reduce((a,s)=>a+s.amount,0)}
+function calcTotalReceived(l){return l.filter(s=>s.payment_status==='received').reduce((a,s)=>a+(s.received_amount||s.amount),0)}
+function calcTotalFees(l){return l.filter(s=>s.payment_status==='received').reduce((a,s)=>a+(s.gateway_fees||0),0)}
+function calcNetProfit(l){return calcTotalReceived(l)-calcTotalFees(l)}
+function getMonthlyRevenue(l,mb=6){const r=[];const n=new Date();for(let i=mb-1;i>=0;i--){const d=new Date(n.getFullYear(),n.getMonth()-i,1);const t=l.filter(s=>{const p=new Date(s.payment_date);return p.getMonth()===d.getMonth()&&p.getFullYear()===d.getFullYear()}).reduce((a,s)=>a+s.amount,0);r.push({label:monthLabel(d),value:t,isCurrent:i===0})}return r}
+function getMonthlyGrowth(l,mb=6){const r=[];const n=new Date();for(let i=mb-1;i>=0;i--){const d=new Date(n.getFullYear(),n.getMonth()-i,1);const c=l.filter(s=>{const p=new Date(s.payment_date);return p.getMonth()===d.getMonth()&&p.getFullYear()===d.getFullYear()}).length;r.push({label:monthLabel(d),value:c,isCurrent:i===0})}return r}
+function getPlanDistribution(l){const d={1:0,3:0,6:0};l.forEach(s=>{if(d[s.plan_months]!==undefined)d[s.plan_months]++});return d}
+function getProductDistribution(l){const d={};PRODUCTS.forEach(p=>d[p]=0);l.forEach(s=>{const k=s.product||'Unassigned';d[k]=(d[k]||0)+1});return d}
+function getProductRevenue(l){const d={};PRODUCTS.forEach(p=>d[p]=0);l.forEach(s=>{const k=s.product||'Unassigned';d[k]=(d[k]||0)+s.amount});return d}
+function getActiveCount(l){return l.filter(s=>deriveStatus(s.expiry_date)==='active').length}
+function getExpiringSoonCount(l){return l.filter(s=>deriveStatus(s.expiry_date)==='expiring_soon').length}
+function getExpiredCount(l){return l.filter(s=>deriveStatus(s.expiry_date)==='expired').length}
+function getDaysLeft(ed){const n=new Date();n.setHours(0,0,0,0);const e=new Date(ed);e.setHours(0,0,0,0);return Math.ceil((e-n)/(1e3*60*60*24))}
+function getExpiryLabel(ed){const d=getDaysLeft(ed);if(d<0)return'Expired '+Math.abs(d)+'d ago';if(d===0)return'Expires today';if(d===1)return'Expires tomorrow';return d+' days left'}
+function sortByExpiry(l){return[...l].sort((a,b)=>new Date(a.expiry_date)-new Date(b.expiry_date))}
+function fmtDate(d){return new Date(d).toLocaleDateString('en-IN',{day:'numeric',month:'short',year:'numeric'})}
+function fmtMoney(n){return'\u20B9'+n.toLocaleString('en-IN')}
+function monthLabel(d){return new Date(d).toLocaleDateString('en-IN',{month:'short',year:'numeric'})}
+function esc(s){const d=document.createElement('div');d.textContent=s;return d.innerHTML}
+</script>
+<script>
+let searchQuery='',filterProduct='',filterStatus='';
+
+function getFilteredList(){
+  let list=sortByExpiry(Storage.load());
+  if(searchQuery){const q=searchQuery.toLowerCase();list=list.filter(s=>s.name.toLowerCase().includes(q)||s.contact.toLowerCase().includes(q)||(s.tradingview_username||'').toLowerCase().includes(q));}
+  if(filterProduct)list=list.filter(s=>s.product===filterProduct);
+  if(filterStatus)list=list.filter(s=>deriveStatus(s.expiry_date)===filterStatus);
+  return list;
+}
+
+function render(){
+  const fullList=sortByExpiry(Storage.load());
+  const list=getFilteredList();
+  const total=fullList.length;
+  const active=getActiveCount(fullList);
+  const expiringSoon=getExpiringSoonCount(fullList);
+  const expired=getExpiredCount(fullList);
+  const revenue=calcRevenue(fullList);
+  const received=calcReceivedRevenue(fullList);
+  const pending=calcPendingRevenue(fullList);
+  const avgRev=total>0?Math.round((received+pending)/total):0;
+  const totalReceived=calcTotalReceived(fullList);
+  const totalFees=calcTotalFees(fullList);
+  const netProfit=calcNetProfit(fullList);
+
+  document.getElementById('metrics').innerHTML=`
+    <div class="card card-revenue"><div class="metric-label">Revenue This Month</div><div class="metric-value">${fmtMoney(revenue)}</div></div>
+    <div class="card"><div class="metric-label">Total Subscribers</div><div class="metric-value">${total}</div><div class="metric-sub trend-flat">${active} active | ${expired} expired</div></div>
+    <div class="card"><div class="metric-label">Lifetime Revenue</div><div class="metric-value" style="color:var(--success)">${fmtMoney(received+pending)}</div></div>
+    <div class="card"><div class="metric-label">Received</div><div class="metric-value" style="color:var(--success)">${fmtMoney(received)}</div></div>
+    <div class="card card-pending"><div class="metric-label">Pending</div><div class="metric-value">${fmtMoney(pending)}</div></div>
+    <div class="card"><div class="metric-label">Avg Revenue/Sub</div><div class="metric-value">${fmtMoney(avgRev)}</div></div>
+    <div class="card"><div class="metric-label">Expiring in 7 Days</div><div class="metric-value" style="color:${expiringSoon>0?'var(--warning)':'inherit'}">${expiringSoon}</div></div>
+  `;
+
+  document.getElementById('net-profit-section').innerHTML=`
+    <div class="card net-profit-card">
+      <div class="section-title">Net Profit Tracker</div>
+      <div class="net-profit-grid">
+        <div class="np-box">
+          <div class="np-label">Total Received (in bank)</div>
+          <div class="np-value np-received">${fmtMoney(totalReceived)}</div>
+        </div>
+        <div class="np-box">
+          <div class="np-label">Gateway Fees Deducted</div>
+          <div class="np-value np-fees">${fmtMoney(totalFees)}</div>
+        </div>
+        <div class="np-box np-net-box">
+          <div class="np-label">Net Profit</div>
+          <div class="np-value np-net">${fmtMoney(netProfit)}</div>
+        </div>
+      </div>
+    </div>
+  `;
+
+  renderBarChart(fullList);renderGrowthChart(fullList);renderDonutChart(fullList);renderProductChart(fullList);renderTable(list);renderFeed(fullList);renderExpiredTable(fullList);
+  document.getElementById('subscriber-count').textContent=`(${list.length}${searchQuery||filterProduct||filterStatus?' of '+total:''})`;
+}
+
+function renderBarChart(list){const data=getMonthlyRevenue(list,6);const maxVal=Math.max(...data.map(d=>d.value),1);document.getElementById('revenue-chart').innerHTML=data.map(d=>{const pct=Math.max((d.value/maxVal)*100,2);return `<div class="bar-col"><div class="bar-value">${d.value>0?fmtMoney(d.value):'-'}</div><div class="bar ${d.isCurrent?'bar-current':'bar-past'}" style="height:${pct}%"></div><div class="bar-label">${d.label}</div></div>`;}).join('');}
+function renderGrowthChart(list){const data=getMonthlyGrowth(list,6);const maxVal=Math.max(...data.map(d=>d.value),1);document.getElementById('growth-chart').innerHTML=data.map(d=>{const pct=Math.max((d.value/maxVal)*100,2);return `<div class="bar-col"><div class="bar-value">${d.value>0?d.value:'-'}</div><div class="bar ${d.isCurrent?'bar-current':'bar-past'}" style="height:${pct}%"></div><div class="bar-label">${d.label}</div></div>`;}).join('');}
+
+function renderDonutChart(list){const dist=getPlanDistribution(list);const total=list.length||1;const colors=['#3DDC84','#FFC107','#F44336'];const segments=[{label:'1 Month',count:dist[1],color:colors[0]},{label:'3 Months',count:dist[3],color:colors[1]},{label:'6 Months',count:dist[6],color:colors[2]}];const cx=60,cy=60,circumference=2*Math.PI*40;let accumulated=0;const circles=segments.filter(s=>s.count>0).map(s=>{const pct=s.count/total;const dash=circumference*pct;const offset=circumference*accumulated;accumulated+=pct;return `<circle cx="${cx}" cy="${cy}" r="40" fill="none" stroke="${s.color}" stroke-width="20" stroke-dasharray="${dash} ${circumference-dash}" stroke-dashoffset="${-offset}" transform="rotate(-90 ${cx} ${cy})"/>`;}).join('');const svg=`<svg class="donut-svg" viewBox="0 0 120 120"><circle cx="${cx}" cy="${cy}" r="40" fill="none" stroke="var(--bg-surface-raised)" stroke-width="20"/>${circles}<text x="${cx}" y="${cy}" text-anchor="middle" dominant-baseline="central" fill="var(--text-primary)" font-size="18" font-weight="600">${total}</text></svg>`;const legend=segments.map(s=>`<div class="legend-item"><span class="legend-dot" style="background:${s.color}"></span><span>${s.label}: ${s.count}</span></div>`).join('');document.getElementById('plan-chart').innerHTML=svg+`<div class="donut-legend">${legend}</div>`;}
+
+function renderProductChart(list){const dist=getProductDistribution(list);const revDist=getProductRevenue(list);const maxCount=Math.max(...Object.values(dist),1);const colors=['#3DDC84','#FFC107','#F44336','#2196F3','#9C27B0','#FF9800','#00BCD4'];const container=document.getElementById('product-chart');const items=Object.entries(dist).filter(([_,c])=>c>0).sort((a,b)=>b[1]-a[1]);if(items.length===0){container.innerHTML='<div style="color:var(--text-tertiary);font-size:13px;padding:20px 0;text-align:center">No product data yet</div>';return;}container.innerHTML=items.map(([name,count],i)=>{const pct=Math.max((count/maxCount)*100,5);const color=colors[i%colors.length];const rev=revDist[name]||0;return `<div class="product-row"><div class="product-name">${esc(name)}</div><div class="product-bar-wrap"><div class="product-bar-fill" style="width:${pct}%;background:${color}">${count} subs</div></div><div class="product-bar-count">${fmtMoney(rev)}</div></div>`;}).join('');}
+
+function renderTable(list){const tbody=document.getElementById('subscriber-table');const empty=document.getElementById('empty-state');const noResults=document.getElementById('no-results');tbody.innerHTML='';if(list.length===0){empty.style.display=searchQuery||filterProduct||filterStatus?'none':'block';noResults.style.display=searchQuery||filterProduct||filterStatus?'block':'none';return;}empty.style.display='none';noResults.style.display='none';tbody.innerHTML=list.map(s=>{const status=deriveStatus(s.expiry_date);const badgeClass=status==='active'?'badge-active':status==='expiring_soon'?'badge-expiring':'badge-expired';const badgeLabel=status==='active'?'Active':status==='expiring_soon'?'Expiring Soon':'Expired';const initial=s.name.charAt(0).toUpperCase();const days=getDaysLeft(s.expiry_date);const daysColor=days<0?'var(--danger)':days<=3?'var(--warning)':'var(--text-secondary)';const daysLabel=getExpiryLabel(s.expiry_date);return `<tr><td><span class="initial-circle">${initial}</span>${esc(s.name)}</td><td>${esc(s.contact)}</td><td>${s.tradingview_username?'@'+esc(s.tradingview_username):'<span style="color:var(--text-tertiary)">-</span>'}</td><td><span class="product-tag">${esc(s.product||'Unassigned')}</span></td><td>${PLANS[s.plan_months].label}</td><td>${fmtMoney(s.amount)}</td><td>${fmtDate(s.payment_date)}</td><td>${fmtDate(s.expiry_date)}</td><td style="color:${daysColor};font-weight:600;white-space:nowrap">${daysLabel}</td><td><span class="badge ${badgeClass}">${badgeLabel}</span></td><td><button class="btn-pay btn-pay-${s.payment_status}" onclick="togglePayment('${s.id}')">${s.payment_status==='received'?'Received':'Pending'}</button></td><td><button class="btn-edit" onclick="editSubscriber('${s.id}')" title="Edit">Edit</button><button class="btn-remove" onclick="removeSubscriber('${s.id}')" title="Remove">X</button></td></tr>`;}).join('');}
+
+function renderFeed(list){
+  const now=new Date();now.setHours(0,0,0,0);
+  const feedItems=list.filter(s=>{
+    const days=getDaysLeft(s.expiry_date);
+    return days<=7;
+  }).sort((a,b)=>getDaysLeft(a.expiry_date)-getDaysLeft(b.expiry_date)).slice(0,20);
+  const feed=document.getElementById('feed-list');
+  if(feedItems.length===0){
+    feed.innerHTML='<div style="color:var(--text-tertiary);font-size:13px;padding:12px 0">No alerts right now.</div>';
+    return;
+  }
+  feed.innerHTML=feedItems.map(s=>{
+    const days=getDaysLeft(s.expiry_date);
+    const color=days<0?'var(--danger)':days<=3?'var(--warning)':'var(--text-secondary)';
+    let label;
+    if(days<0)label=`<span style="color:var(--danger)">EXPIRED</span> ${Math.abs(days)}d ago`;
+    else if(days===0)label='<span style="color:var(--danger)">Expires TODAY</span>';
+    else if(days===1)label='<span style="color:var(--warning)">Expires TOMORROW</span>';
+    else label=`<span style="color:var(--warning)">${days} days left</span>`;
+    return `<div class="feed-item"><span class="feed-dot" style="background:${color}"></span><span><strong>${esc(s.name)}</strong> (${esc(s.product||'N/A')}) — ${label}</span></div>`;
+  }).join('');
+}
+
+function renderExpiredTable(list){
+  const expired=list.filter(s=>deriveStatus(s.expiry_date)==='expired').sort((a,b)=>new Date(a.expiry_date)-new Date(b.expiry_date));
+  const tbody=document.getElementById('expired-table');
+  const empty=document.getElementById('expired-empty');
+  const countEl=document.getElementById('expired-count');
+  countEl.textContent=expired.length+' customers';
+  if(expired.length===0){tbody.innerHTML='';empty.style.display='block';return;}
+  empty.style.display='none';
+  tbody.innerHTML=expired.map((s,i)=>{
+    const daysExpired=Math.abs(getDaysLeft(s.expiry_date));
+    return `<tr>
+      <td style="color:var(--text-tertiary)">${i+1}</td>
+      <td><strong>${esc(s.name)}</strong></td>
+      <td data-contact="${esc(s.contact)}">${esc(s.contact)}</td>
+      <td>${s.tradingview_username?'@'+esc(s.tradingview_username):'-'}</td>
+      <td><span class="product-tag">${esc(s.product||'N/A')}</span></td>
+      <td>${PLANS[s.plan_months].label}</td>
+      <td>${fmtMoney(s.amount)}</td>
+      <td>${fmtDate(s.expiry_date)}</td>
+      <td class="expired-row-expired">${daysExpired}d ago</td>
+      <td><button class="btn-copy" onclick="copyContact(this)" title="Copy contact">Copy</button>
+      <button class="btn-renew" onclick="editSubscriber('${s.id}')" title="Renew">Renew</button></td>
+    </tr>`;
+  }).join('');
+}
+
+function copyContact(btn){
+  const contact=btn.closest('tr').querySelector('[data-contact]').dataset.contact;
+  if(navigator.clipboard&&navigator.clipboard.writeText){
+    navigator.clipboard.writeText(contact).then(()=>showToast('Copied: '+contact)).catch(()=>fallbackCopy(contact));
+  } else {fallbackCopy(contact);}
+}
+function fallbackCopy(contact){
+  const ta=document.createElement('textarea');ta.value=contact;ta.style.cssText='position:fixed;left:-9999px';document.body.appendChild(ta);ta.select();
+  try{document.execCommand('copy');showToast('Copied: '+contact);}catch(e){prompt('Copy this:',contact);}
+  document.body.removeChild(ta);
+}
+function showToast(msg){
+  const t=document.createElement('div');
+  t.textContent=msg;
+  t.style.cssText='position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:#333;color:#fff;padding:10px 20px;border-radius:8px;font-size:13px;z-index:999;animation:fadeIn .3s';
+  document.body.appendChild(t);
+  setTimeout(()=>{t.style.opacity='0';t.style.transition='opacity .3s';setTimeout(()=>t.remove(),300)},2000);
+}
+
+document.addEventListener('keydown',e=>{
+  if(e.key==='Escape'){
+    if(document.getElementById('report-overlay').classList.contains('open')){closeReport();return;}
+    if(document.getElementById('modal-overlay').classList.contains('open')){closeModal();return;}
+  }
+  if((e.ctrlKey||e.metaKey)&&e.key==='n'){e.preventDefault();openModal();}
+});
+
+function loadProducts(){const sel=document.getElementById('f-product');sel.innerHTML='<option value="">Select Product</option>';PRODUCTS.forEach(p=>{sel.innerHTML+=`<option value="${esc(p)}">${esc(p)}</option>`});const filterSel=document.getElementById('filter-product');filterSel.innerHTML='<option value="">All Products</option>';PRODUCTS.forEach(p=>{filterSel.innerHTML+=`<option value="${esc(p)}">${esc(p)}</option>`});}
+
+let searchTimeout;function handleSearch(){clearTimeout(searchTimeout);searchTimeout=setTimeout(()=>{searchQuery=document.getElementById('search-input').value.trim();filterProduct=document.getElementById('filter-product').value;filterStatus=document.getElementById('filter-status').value;render();},200);}
+
+function openModal(editId){document.getElementById('modal-title').textContent=editId?'Edit Subscriber':'Add Subscriber';document.getElementById('modal-submit-btn').textContent=editId?'Save':'Add';document.getElementById('f-edit-id').value=editId||'';if(editId){const s=Storage.load().find(x=>x.id===editId);if(s){document.getElementById('f-name').value=s.name;document.getElementById('f-contact').value=s.contact;document.getElementById('f-tv').value=s.tradingview_username||'';document.getElementById('f-product').value=s.product||'';document.getElementById('f-plan').value=s.plan_months;document.getElementById('f-date').value=s.payment_date;}}else{document.getElementById('add-form').reset();document.getElementById('f-date').value=new Date().toISOString().split('T')[0];}document.getElementById('modal-overlay').classList.add('open');document.getElementById('f-name').focus();}
+function closeModal(){document.getElementById('modal-overlay').classList.remove('open');document.getElementById('f-edit-id').value='';}
+function closeModalBg(e){if(e.target===e.currentTarget)closeModal();}
+
+function handleSubmit(e){e.preventDefault();const editId=document.getElementById('f-edit-id').value;const name=document.getElementById('f-name').value.trim();const contact=document.getElementById('f-contact').value.trim();const tvUsername=document.getElementById('f-tv').value.trim();const product=document.getElementById('f-product').value;const planMonths=parseInt(document.getElementById('f-plan').value);const paymentDate=document.getElementById('f-date').value;if(!name||!contact||!paymentDate||!product)return;if(editId){const expiry=new Date(paymentDate);expiry.setMonth(expiry.getMonth()+planMonths);Storage.update(editId,{name,contact,tradingview_username:tvUsername,product,plan_months:planMonths,amount:PLANS[planMonths].price,payment_date:paymentDate,expiry_date:expiry.toISOString().split('T')[0]});}else{const sub=createSubscriber(name,contact,planMonths,paymentDate,product,tvUsername);Storage.add(sub);}document.getElementById('add-form').reset();closeModal();render();}
+
+function editSubscriber(id){openModal(id);}
+function removeSubscriber(id){if(!confirm('Remove this subscriber?'))return;Storage.remove(id);render();}
+function togglePayment(id){
+  const s=Storage.load().find(x=>x.id===id);
+  if(!s)return;
+  if(s.payment_status==='received'){
+    Storage.update(id,{payment_status:'pending',received_amount:0,gateway_fees:0});
+    render();
+  } else {
+    openPaymentModal(id);
+  }
+}
+
+function openPaymentModal(id){
+  const s=Storage.load().find(x=>x.id===id);
+  if(!s)return;
+  document.getElementById('pm-id').value=id;
+  document.getElementById('pm-name').textContent=s.name;
+  document.getElementById('pm-amount').textContent=fmtMoney(s.amount);
+  document.getElementById('pm-received').value=s.received_amount||s.amount;
+  document.getElementById('pm-fees').value=s.gateway_fees||0;
+  document.getElementById('pm-net').textContent=fmtMoney((s.received_amount||s.amount)-(s.gateway_fees||0));
+  document.getElementById('payment-modal-overlay').classList.add('open');
+  document.getElementById('pm-received').focus();
+}
+function closePaymentModal(){document.getElementById('payment-modal-overlay').classList.remove('open');}
+function closePaymentModalBg(e){if(e.target===e.currentTarget)closePaymentModal();}
+
+function calcPaymentNet(){
+  const received=parseFloat(document.getElementById('pm-received').value)||0;
+  const fees=parseFloat(document.getElementById('pm-fees').value)||0;
+  document.getElementById('pm-net').textContent=fmtMoney(received-fees);
+}
+
+function handlePaymentSubmit(e){
+  e.preventDefault();
+  const id=document.getElementById('pm-id').value;
+  const received=parseFloat(document.getElementById('pm-received').value)||0;
+  const fees=parseFloat(document.getElementById('pm-fees').value)||0;
+  Storage.update(id,{payment_status:'received',received_amount:received,gateway_fees:fees});
+  closePaymentModal();
+  render();
+}
+
+function handleImport(e){const file=e.target.files[0];if(!file)return;const reader=new FileReader();reader.onload=function(ev){const result=Storage.importData(ev.target.result);if(result.success){alert('Imported '+result.count+' subscribers');render();}else{alert('Import failed: '+result.error);}};reader.readAsText(file);e.target.value='';}
+
+/* ==================== REPORTS ==================== */
+function getNow(){return new Date();}
+function fmtDateShort(d){return new Date(d).toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'});}
+
+function openReport(type){
+  const list=Storage.load().sort((a,b)=>new Date(a.payment_date)-new Date(b.payment_date));
+  const now=getNow();
+  const page=document.getElementById('report-page');
+
+  if(type==='transaction'){
+    page.innerHTML=buildTransactionReport(list,now);
+  } else {
+    page.innerHTML=buildSummaryReport(list,now);
+  }
+  document.getElementById('report-overlay').classList.add('open');
+}
+
+function closeReport(){
+  document.getElementById('report-overlay').classList.remove('open');
+}
+
+function buildSummaryReport(list,now){
+  const total=list.length;
+  const active=getActiveCount(list);
+  const expired=getExpiredCount(list);
+  const expiring=getExpiringSoonCount(list);
+  const received=calcReceivedRevenue(list);
+  const pending=calcPendingRevenue(list);
+  const lifetime=received+pending;
+  const avgRev=total>0?Math.round(lifetime/total):0;
+  const totalReceived=calcTotalReceived(list);
+  const totalFees=calcTotalFees(list);
+  const netProfit=calcNetProfit(list);
+
+  const dist=getPlanDistribution(list);
+  const prodDist=getProductDistribution(list);
+  const prodRev=getProductRevenue(list);
+
+  const receivedList=list.filter(s=>s.payment_status==='received');
+  const pendingList=list.filter(s=>s.payment_status==='pending');
+
+  const dateStr=now.toLocaleDateString('en-IN',{day:'numeric',month:'long',year:'numeric'});
+  const timeStr=now.toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit'});
+
+  return `
+  <button class="btn btn-secondary report-close no-print" onclick="closeReport()" style="margin-bottom:16px">Close Report</button>
+  <button class="btn btn-success report-close no-print" onclick="window.print()" style="margin-bottom:16px;margin-left:8px">Print / Save PDF</button>
+
+  <div class="rpt-header">
+    <h1>SALES SUMMARY REPORT</h1>
+    <p>Raj Trading Analytics — Subscription Business</p>
+    <div class="rpt-period">Report Generated: ${dateStr} at ${timeStr}</div>
+  </div>
+
+  <div class="rpt-section">
+    <h2>Financial Overview</h2>
+    <div class="rpt-summary-grid">
+      <div class="rpt-summary-box"><div class="rpt-box-label">Lifetime Revenue</div><div class="rpt-box-value">₹${lifetime.toLocaleString('en-IN')}</div></div>
+      <div class="rpt-summary-box"><div class="rpt-box-label">Payment Received</div><div class="rpt-box-value" style="color:#2e7d32">₹${received.toLocaleString('en-IN')}</div></div>
+      <div class="rpt-summary-box"><div class="rpt-box-label">Payment Pending</div><div class="rpt-box-value" style="color:#e65100">₹${pending.toLocaleString('en-IN')}</div></div>
+      <div class="rpt-summary-box"><div class="rpt-box-label">Avg Rev / Subscriber</div><div class="rpt-box-value">₹${avgRev.toLocaleString('en-IN')}</div></div>
+    </div>
+  </div>
+
+  <div class="rpt-section">
+    <h2>Net Profit Summary</h2>
+    <div class="rpt-summary-grid">
+      <div class="rpt-summary-box"><div class="rpt-box-label">Actual Received (in Bank)</div><div class="rpt-box-value" style="color:#2e7d32">₹${totalReceived.toLocaleString('en-IN')}</div></div>
+      <div class="rpt-summary-box"><div class="rpt-box-label">Gateway Fees</div><div class="rpt-box-value" style="color:#c62828">₹${totalFees.toLocaleString('en-IN')}</div></div>
+      <div class="rpt-summary-box"><div class="rpt-box-label">Net Profit</div><div class="rpt-box-value" style="color:#2e7d32;font-size:22px">₹${netProfit.toLocaleString('en-IN')}</div></div>
+      <div class="rpt-summary-box"><div class="rpt-box-label">Fee %</div><div class="rpt-box-value">${received?Math.round(totalFees/received*100):0}%</div></div>
+    </div>
+  </div>
+
+  <div class="rpt-section">
+    <h2>Subscriber Overview</h2>
+    <div class="rpt-summary-grid">
+      <div class="rpt-summary-box"><div class="rpt-box-label">Total Subscribers</div><div class="rpt-box-value">${total}</div></div>
+      <div class="rpt-summary-box"><div class="rpt-box-label">Active</div><div class="rpt-box-value" style="color:#2e7d32">${active}</div></div>
+      <div class="rpt-summary-box"><div class="rpt-box-label">Expiring Soon</div><div class="rpt-box-value" style="color:#e65100">${expiring}</div></div>
+      <div class="rpt-summary-box"><div class="rpt-box-label">Expired</div><div class="rpt-box-value" style="color:#c62828">${expired}</div></div>
+    </div>
+  </div>
+
+  <div class="rpt-section">
+    <h2>Plan Breakdown</h2>
+    <table class="rpt-table">
+      <thead><tr><th>Plan</th><th class="text-center">Subscribers</th><th class="text-right">Revenue</th><th class="text-right">% of Total</th></tr></thead>
+      <tbody>
+        <tr><td>1 Month (₹199)</td><td class="text-center">${dist[1]}</td><td class="text-right">₹${(dist[1]*199).toLocaleString('en-IN')}</td><td class="text-right">${total?Math.round(dist[1]/total*100):0}%</td></tr>
+        <tr><td>3 Months (₹499)</td><td class="text-center">${dist[3]}</td><td class="text-right">₹${(dist[3]*499).toLocaleString('en-IN')}</td><td class="text-right">${total?Math.round(dist[3]/total*100):0}%</td></tr>
+        <tr><td>6 Months (₹899)</td><td class="text-center">${dist[6]}</td><td class="text-right">₹${(dist[6]*899).toLocaleString('en-IN')}</td><td class="text-right">${total?Math.round(dist[6]/total*100):0}%</td></tr>
+        <tr class="rpt-total"><td><strong>Total</strong></td><td class="text-center"><strong>${total}</strong></td><td class="text-right"><strong>₹${lifetime.toLocaleString('en-IN')}</strong></td><td class="text-right"><strong>100%</strong></td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="rpt-section">
+    <h2>Product Breakdown</h2>
+    <table class="rpt-table">
+      <thead><tr><th>Product</th><th class="text-center">Subscribers</th><th class="text-right">Revenue</th></tr></thead>
+      <tbody>
+        ${Object.entries(prodDist).filter(([_,c])=>c>0).map(([name,count])=>`<tr><td>${name}</td><td class="text-center">${count}</td><td class="text-right">₹${(prodRev[name]||0).toLocaleString('en-IN')}</td></tr>`).join('')}
+        <tr class="rpt-total"><td><strong>Total</strong></td><td class="text-center"><strong>${total}</strong></td><td class="text-right"><strong>₹${lifetime.toLocaleString('en-IN')}</strong></td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="rpt-footer">
+    <span>This is a system-generated report from Subscription Tracker</span>
+    <span>Page 1 of 1</span>
+  </div>
+
+  <div class="rpt-signature">
+    <div><div class="rpt-sign-line">Prepared By</div></div>
+    <div><div class="rpt-sign-line">Approved By</div></div>
+  </div>`;
+}
+
+function buildTransactionReport(list,now){
+  const total=list.length;
+  const received=calcReceivedRevenue(list);
+  const pending=calcPendingRevenue(list);
+  const lifetime=received+pending;
+
+  const dateStr=now.toLocaleDateString('en-IN',{day:'numeric',month:'long',year:'numeric'});
+  const timeStr=now.toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit'});
+
+  let serialNo=0;
+  const rows=list.map(s=>{
+    serialNo++;
+    const status=deriveStatus(s.expiry_date);
+    const statusLabel=status==='active'?'Active':status==='expiring_soon'?'Expiring Soon':'Expired';
+    const statusClass=status==='active'?'status-active':status==='expiring_soon'?'status-expiring':'status-expired';
+    const payClass=s.payment_status==='received'?'status-received':'status-pending';
+    return `<tr>
+      <td class="text-center">${serialNo}</td>
+      <td>${fmtDateShort(s.payment_date)}</td>
+      <td><strong>${esc(s.name)}</strong></td>
+      <td>${esc(s.contact)}</td>
+      <td>${s.tradingview_username?'@'+esc(s.tradingview_username):'-'}</td>
+      <td>${esc(s.product||'N/A')}</td>
+      <td class="text-center">${PLANS[s.plan_months].label}</td>
+      <td class="text-right"><strong>₹${s.amount.toLocaleString('en-IN')}</strong></td>
+      <td class="text-right">${s.payment_status==='received'?'₹'+(s.received_amount||s.amount).toLocaleString('en-IN'):'-'}</td>
+      <td class="text-right">${s.payment_status==='received'&&s.gateway_fees?'₹'+s.gateway_fees.toLocaleString('en-IN'):'-'}</td>
+      <td class="text-center ${payClass}">${s.payment_status==='received'?'Received':'Pending'}</td>
+      <td class="text-center ${statusClass}">${statusLabel}</td>
+      <td>${fmtDateShort(s.expiry_date)}</td>
+    </tr>`;
+  }).join('');
+
+  const pendingList=list.filter(s=>s.payment_status==='pending');
+  const pendingRows=pendingList.map(s=>{
+    serialNo++;
+    return `<tr>
+      <td>${esc(s.name)}</td>
+      <td>${esc(s.contact)}</td>
+      <td>${s.tradingview_username?'@'+esc(s.tradingview_username):'-'}</td>
+      <td>${esc(s.product||'N/A')}</td>
+      <td class="text-center">${PLANS[s.plan_months].label}</td>
+      <td class="text-right"><strong>₹${s.amount.toLocaleString('en-IN')}</strong></td>
+      <td>${fmtDateShort(s.payment_date)}</td>
+      <td>${fmtDateShort(s.expiry_date)}</td>
+    </tr>`;
+  }).join('');
+
+  return `
+  <button class="btn btn-secondary report-close no-print" onclick="closeReport()" style="margin-bottom:16px">Close Report</button>
+  <button class="btn btn-success report-close no-print" onclick="window.print()" style="margin-bottom:16px;margin-left:8px">Print / Save PDF</button>
+
+  <div class="rpt-header">
+    <h1>TRANSACTION REPORT</h1>
+    <p>Raj Trading Analytics — Subscription Payments</p>
+    <div class="rpt-period">Report Generated: ${dateStr} at ${timeStr}</div>
+  </div>
+
+  <div class="rpt-section">
+    <h2>Payment Summary</h2>
+    <div class="rpt-summary-grid">
+      <div class="rpt-summary-box"><div class="rpt-box-label">Total Transactions</div><div class="rpt-box-value">${total}</div></div>
+      <div class="rpt-summary-box"><div class="rpt-box-label">Total Amount</div><div class="rpt-box-value">₹${lifetime.toLocaleString('en-IN')}</div></div>
+      <div class="rpt-summary-box"><div class="rpt-box-label">Received</div><div class="rpt-box-value" style="color:#2e7d32">₹${received.toLocaleString('en-IN')}</div></div>
+      <div class="rpt-summary-box"><div class="rpt-box-label">Pending</div><div class="rpt-box-value" style="color:#e65100">₹${pending.toLocaleString('en-IN')}</div></div>
+    </div>
+    <div class="rpt-summary-grid" style="margin-top:12px">
+      <div class="rpt-summary-box"><div class="rpt-box-label">Actual in Bank</div><div class="rpt-box-value" style="color:#2e7d32">₹${calcTotalReceived(list).toLocaleString('en-IN')}</div></div>
+      <div class="rpt-summary-box"><div class="rpt-box-label">Gateway Fees</div><div class="rpt-box-value" style="color:#c62828">₹${calcTotalFees(list).toLocaleString('en-IN')}</div></div>
+      <div class="rpt-summary-box"><div class="rpt-box-label">Net Profit</div><div class="rpt-box-value" style="color:#2e7d32;font-size:22px">₹${calcNetProfit(list).toLocaleString('en-IN')}</div></div>
+      <div class="rpt-summary-box"><div class="rpt-box-label">Fee %</div><div class="rpt-box-value">${received?Math.round(calcTotalFees(list)/received*100):0}%</div></div>
+    </div>
+  </div>
+
+  <div class="rpt-section">
+    <h2>All Transactions</h2>
+    <table class="rpt-table">
+      <thead>
+        <tr>
+          <th class="text-center">#</th><th>Payment Date</th><th>Subscriber</th><th>Contact</th>
+          <th>TV Username</th><th>Product</th><th class="text-center">Plan</th>
+          <th class="text-right">Amount</th><th class="text-right">Received</th><th class="text-right">Fees</th>
+          <th class="text-center">Payment</th>
+          <th class="text-center">Status</th><th>Expiry Date</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${rows}
+        <tr class="rpt-total">
+          <td colspan="9"><strong>TOTAL (${total} transactions)</strong></td>
+          <td class="text-right"><strong>₹${lifetime.toLocaleString('en-IN')}</strong></td>
+          <td class="text-right"><strong>₹${calcTotalReceived(list).toLocaleString('en-IN')}</strong></td>
+          <td class="text-right"><strong>₹${calcTotalFees(list).toLocaleString('en-IN')}</strong></td>
+          <td class="text-center">—</td><td class="text-center">—</td><td>—</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  ${pendingList.length>0?`
+  <div class="rpt-section">
+    <h2>Pending Payments — Follow Up Required (${pendingList.length})</h2>
+    <table class="rpt-table">
+      <thead>
+        <tr><th>Subscriber</th><th>Contact</th><th>TV Username</th><th>Product</th><th class="text-center">Plan</th><th class="text-right">Amount</th><th>Payment Date</th><th>Expiry Date</th></tr>
+      </thead>
+      <tbody>
+        ${pendingRows}
+        <tr class="rpt-total">
+          <td colspan="5"><strong>TOTAL PENDING</strong></td>
+          <td class="text-right"><strong>₹${pending.toLocaleString('en-IN')}</strong></td><td colspan="2">—</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>`:''}
+
+  <div class="rpt-footer">
+    <span>This is a system-generated transaction report from Subscription Tracker</span>
+    <span>Page 1 of 1</span>
+  </div>
+
+  <div class="rpt-signature">
+    <div><div class="rpt-sign-line">Prepared By</div></div>
+    <div><div class="rpt-sign-line">Approved By</div></div>
+  </div>`;
+}
+
+loadProducts();
+render();
+
+// Lock screen + particles
+(function(){
+  const lockParticles=document.getElementById('lock-particles');
+  for(let i=0;i<30;i++){
+    const p=document.createElement('div');
+    p.className='lock-p';
+    p.style.left=Math.random()*100+'%';
+    p.style.animationDuration=(4+Math.random()*6)+'s';
+    p.style.animationDelay=Math.random()*5+'s';
+    p.style.width=p.style.height=(1+Math.random()*2)+'px';
+    lockParticles.appendChild(p);
+  }
+  
+  const input=document.getElementById('lock-input');
+  input.focus();
+  input.addEventListener('input',function(){
+    if(this.value.length===4){
+      if(this.value==='7647'){
+        this.classList.add('success');
+        setTimeout(function(){
+          document.getElementById('lock-screen').classList.add('hidden');
+          setTimeout(function(){document.getElementById('lock-screen').remove()},700);
+          startWelcome();
+        },400);
+      } else {
+        this.classList.add('error');
+        var self=this;
+        setTimeout(function(){self.classList.remove('error');self.value='';self.focus()},600);
+      }
+    }
+  });
+  input.addEventListener('keydown',function(e){
+    if(!/^[0-9]$/.test(e.key)&&e.key!=='Backspace'&&e.key!=='Tab')e.preventDefault();
+  });
+})();
+
+function startWelcome(){
+  var overlay=document.getElementById('welcome-overlay');
+  var container=document.getElementById('main-container');
+  var wParticles=document.getElementById('welcome-particles');
+  
+  for(var i=0;i<20;i++){
+    var p=document.createElement('div');
+    p.className='w-particle';
+    p.style.left=Math.random()*100+'%';
+    p.style.animationDelay=Math.random()*3+'s';
+    p.style.animationDuration=(2+Math.random()*2)+'s';
+    wParticles.appendChild(p);
+  }
+  
+  setTimeout(function(){
+    overlay.classList.add('hidden');
+    container.style.opacity='1';
+  },2500);
+  
+  setTimeout(function(){overlay.remove()},3300);
+}
+</script>
+</body>
+</html>
